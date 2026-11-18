@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scratch管理 | suzunokana専用</title>
+<meta name="description" content="suzunokana専用のScratch管理アプリ。新着コメント・作品・スタジオをまとめて確認できます。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f8ff; --surface:#ffffff; --surface2:#eef4ff;
+  --text:#3d4457; --muted:#8a93a8; --border:#dde6f5;
+  --blue:#4C97FF; --orange:#FF8C1A; --pink:#ff9ecb; --mint:#7fe3c8;
+  --new:#ff5d8f; --shadow:0 6px 24px rgba(76,151,255,.12);
+}
+html[data-theme="dark"]{
+  --bg:#171a26; --surface:#222637; --surface2:#2a2f47;
+  --text:#e8ebf5; --muted:#9aa3bd; --border:#363c58;
+  --shadow:0 6px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{margin:0; font-family:"Zen Maru Gothic",sans-serif; background:var(--bg); color:var(--text); padding-bottom:calc(76px + env(safe-area-inset-bottom));}
+.ms{font-family:"Material Symbols Rounded"; font-weight:normal; font-style:normal; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; word-wrap:normal; direction:ltr; -webkit-font-smoothing:antialiased; font-variation-settings:"FILL" 1,"wght" 500,"GRAD" 0,"opsz" 24; vertical-align:-6px;}
+header{position:sticky; top:0; z-index:50; background:color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--border);}
+.hd-in{max-width:640px; margin:0 auto; display:flex; align-items:center; gap:10px; padding:10px 16px;}
+.hd-in img{width:38px; height:38px; border-radius:50%; border:2px solid var(--blue);}
+.hd-title{font-weight:900; font-size:18px; line-height:1.15;}
+.hd-sub{font-size:11px; color:var(--muted); font-weight:700;}
+.hd-btn{margin-left:auto; border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:999px; width:42px; height:42px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+.hd-btn:active{transform:scale(.94);}
+main{max-width:640px; margin:0 auto; padding:14px 14px 8px;}
+section.page{display:none;}
+section.page.on{display:block;}
+.card{background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); padding:16px; margin-bottom:14px;}
+.rise{opacity:0; transform:translateY(14px); animation:rise .5s ease forwards;}
+@keyframes rise{to{opacity:1; transform:none;}}
+.pf-top{display:flex; gap:14px; align-items:center;}
+.pf-top img{width:64px; height:64px; border-radius:50%; border:3px solid var(--blue);}
+.pf-name{font-size:20px; font-weight:900;}
+.pf-status{font-size:13px; color:var(--muted); font-weight:700;}
+.bio{white-space:pre-wrap; font-size:13.5px; line-height:1.7; margin-top:12px; word-break:break-word;}
+.sec-title{display:flex; align-items:center; gap:8px; font-weight:900; font-size:16px; margin:4px 2px 10px;}
+.sec-title .ms{color:var(--blue);}
+.feat{display:flex; gap:12px; text-decoration:none; color:inherit; align-items:center;}
+.feat img{width:120px; height:90px; object-fit:cover; border-radius:12px; border:1px solid var(--border);}
+.feat .ft{font-weight:900; font-size:15px; line-height:1.4;}
+.label{display:inline-block; font-size:11px; font-weight:900; color:#fff; background:var(--orange); border-radius:999px; padding:2px 9px; margin-bottom:6px;}
+.big-btn{display:flex; align-items:center; gap:12px; width:100%; padding:15px 16px; border-radius:16px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit; font-size:15px; font-weight:900; cursor:pointer; text-decoration:none; margin-bottom:10px; box-shadow:var(--shadow);}
+.big-btn .ms{color:var(--blue); font-size:26px;}
+.big-btn .cnt{margin-left:auto; background:var(--new); color:#fff; font-size:12px; min-width:24px; height:24px; border-radius:999px; display:none; align-items:center; justify-content:center; padding:0 7px;}
+.big-btn .cnt.show{display:flex;}
+.note{font-size:12.5px; color:var(--muted); line-height:1.7; font-weight:700;}
+.cmt{display:flex; gap:11px; padding:13px 13px; background:var(--surface); border:1px solid var(--border); border-radius:16px; margin-bottom:10px; box-shadow:var(--shadow);}
+.cmt.unread{border-color:var(--new); border-width:1.5px;}
+.cmt img.av{width:44px; height:44px; border-radius:50%; flex:none;}
+.cmt-body{flex:1; min-width:0;}
+.cmt-head{display:flex; align-items:baseline; gap:7px; flex-wrap:wrap;}
+.cmt-author{font-weight:900; font-size:14.5px;}
+.cmt-author a{color:inherit; text-decoration:none;}
+.self-tag{font-size:10px; font-weight:900; background:var(--surface2); color:var(--muted); border-radius:6px; padding:1px 6px;}
+.new-tag{font-size:10px; font-weight:900; background:var(--new); color:#fff; border-radius:6px; padding:1px 6px;}
+.cmt-time{font-size:11.5px; color:var(--muted); font-weight:700;}
+.cmt-ctx{font-size:11.5px; color:var(--blue); font-weight:900; text-decoration:none; display:inline-block; margin-top:1px;}
+.cmt-text{font-size:14px; line-height:1.65; margin-top:3px; word-break:break-word; white-space:pre-wrap;}
+.cmt.reply{margin-left:34px; background:var(--surface2); box-shadow:none;}
+.reply-btn{margin-top:8px; display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--blue),#7ab5ff); color:#fff; border:none; font-family:inherit; font-weight:900; font-size:13px; padding:9px 16px; border-radius:999px; cursor:pointer; text-decoration:none;}
+.reply-btn .ms{font-size:18px; vertical-align:-4px;}
+.grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.pj{background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; box-shadow:var(--shadow); text-decoration:none; color:inherit; display:block;}
+.pj img{width:100%; aspect-ratio:4/3; object-fit:cover; display:block;}
+.pj .pt{font-weight:900; font-size:13.5px; line-height:1.45; padding:10px 11px 12px;}
+.studio-row{display:flex; gap:12px; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:11px; margin-bottom:10px; box-shadow:var(--shadow); text-decoration:none; color:inherit;}
+.studio-row img{width:86px; height:52px; object-fit:cover; border-radius:10px; flex:none;}
+.studio-row .st{font-weight:900; font-size:14px; line-height:1.45;}
+.empty{ text-align:center; color:var(--muted); font-weight:700; padding:28px 10px; font-size:14px;}
+.loading{text-align:center; color:var(--muted); font-weight:700; padding:28px 10px; font-size:14px;}
+.spin{display:inline-block; animation:rot 1s linear infinite;}
+@keyframes rot{to{transform:rotate(360deg);}}
+.toolbar{display:flex; gap:8px; margin-bottom:12px;}
+.tool-btn{flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:11px; border-radius:12px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit; font-weight:900; font-size:13.5px; cursor:pointer;}
+.tool-btn .ms{color:var(--blue); font-size:20px;}
+nav.tabs{position:fixed; left:0; right:0; bottom:0; z-index:60; background:color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter:blur(10px); border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom);}
+.tabs-in{max-width:640px; margin:0 auto; display:flex;}
+.tab{flex:1; border:none; background:none; font-family:inherit; color:var(--muted); font-weight:900; font-size:11px; padding:9px 0 10px; cursor:pointer; position:relative; display:flex; flex-direction:column; align-items:center; gap:2px;}
+.tab .ms{font-size:25px;}
+.tab.on{color:var(--blue);}
+.tab .bdg{position:absolute; top:4px; right:calc(50% - 22px); background:var(--new); color:#fff; font-size:10px; font-weight:900; min-width:19px; height:19px; border-radius:999px; display:none; align-items:center; justify-content:center; padding:0 5px;}
+.tab .bdg.show{display:flex;}
+.err{background:#fff0f4; color:#c22e5c; border:1px solid #ffc9da; border-radius:12px; padding:10px 12px; font-size:12.5px; font-weight:700; margin-bottom:10px; line-height:1.6;}
+html[data-theme="dark"] .err{background:#3a2230; color:#ff9ec0; border-color:#5c3049;}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd-in">
+    <img id="hdAvatar" src="https://uploads.scratch.mit.edu/users/avatars/145926730.png" alt="">
+    <div>
+      <div class="hd-title">Scratch管理</div>
+      <div class="hd-sub">suzunokana 専用</div>
+    </div>
+    <button class="hd-btn" id="refreshBtn" aria-label="更新"><span class="ms">refresh</span></button>
+  </div>
+</header>
+<main>
+  <section class="page on" id="page-home">
+    <div id="homeBody"><div class="loading"><span class="ms spin">progress_activity</span> 読み込み中…</div></div>
+  </section>
+  <section class="page" id="page-comments">
+    <div class="toolbar">
+      <button class="tool-btn" id="cmtReload"><span class="ms">refresh</span>再読み込み</button>
+      <button class="tool-btn" id="cmtReadAll"><span class="ms">done_all</span>全部既読にする</button>
+    </div>
+    <div id="cmtBody"><div class="loading"><span class="ms spin">progress_activity</span> コメントを集めています…</div></div>
+  </section>
+  <section class="page" id="page-projects">
+    <div id="pjBody"><div class="loading"><span class="ms spin">progress_activity</span> 読み込み中…</div></div>
+  </section>
+  <section class="page" id="page-studios">
+    <div class="card rise">
+      <div class="sec-title"><span class="ms">info</span>スタジオ招待について</div>
+      <div class="note">招待の承認はScratchの「メッセージ」でしかできません。このタブでは参加中・フォロー中のスタジオ一覧だけ確認できます。</div>
+      <a class="reply-btn" style="margin-top:10px" href="https://scratch.mit.edu/messages/" target="_blank" rel="noopener"><span class="ms">mail</span>メッセージを開く</a>
+    </div>
+    <div id="stBody"><div class="loading"><span class="ms spin">progress_activity</span> 読み込み中…</div></div>
+  </section>
+  <section class="page" id="page-more">
+    <a class="big-btn" href="https://scratch.mit.edu/messages/" target="_blank" rel="noopener"><span class="ms">mail</span>メッセージを開く（招待の承認もここ）</a>
+    <a class="big-btn" href="https://scratch.mit.edu/mystuff/" target="_blank" rel="noopener"><span class="ms">folder_managed</span>私の作品・スタジオ管理</a>
+    <a class="big-btn" href="https://scratch.mit.edu/users/suzunokana/" target="_blank" rel="noopener"><span class="ms">person</span>プロフィールを開く</a>
+    <button class="big-btn" id="themeBtn"><span class="ms">dark_mode</span>ダークモード切替</button>
+    <button class="big-btn" id="resetSeenBtn"><span class="ms">restart_alt</span>既読の記録をリセット</button>
+    <div class="card">
+      <div class="sec-title"><span class="ms">info</span>このアプリでできること</div>
+      <div class="note">新着コメント（プロフィール＋最近の作品）をまとめて確認、既読管理、作品とスタジオの一覧ができます。返信とスタジオ招待の承認はScratchの仕様で外部アプリからはできないため、「返信する」ボタンからScratchの該当コメントへ移動します。</div>
+    </div>
+  </section>
+</main>
+<nav class="tabs">
+  <div class="tabs-in">
+    <button class="tab on" data-tab="home"><span class="ms">home</span>ホーム</button>
+    <button class="tab" data-tab="comments"><span class="ms">chat</span>コメント<span class="bdg" id="cmtBadge"></span></button>
+    <button class="tab" data-tab="projects"><span class="ms">apps</span>作品</button>
+    <button class="tab" data-tab="studios"><span class="ms">group</span>スタジオ</button>
+    <button class="tab" data-tab="more"><span class="ms">more_horiz</span>その他</button>
+  </div>
+</nav>
+<script>
+"use strict";
+var USER = "suzunokana";
+var BASE = "https://scratch.mit.edu";
+var $ = function(s, r){ return (r||document).querySelector(s); };
+var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function abs(u){ if(!u) return ""; if(u.indexOf("//")===0) return "https:"+u; if(u.indexOf("http")===0) return u; return "https://scratch.mit.edu"+u; }
+function relTime(d){
+  var sec = Math.floor((Date.now()-d.getTime())/1000);
+  if(sec < 60) return "たった今";
+  if(sec < 3600) return Math.floor(sec/60)+"分前";
+  if(sec < 86400) return Math.floor(sec/3600)+"時間前";
+  if(sec < 86400*30) return Math.floor(sec/86400)+"日前";
+  return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate();
+}
+function fetchText(url){
+  return fetch(url, {credentials:"omit"}).then(function(r){
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return r.text();
+  });
+}
+function parseHTML(html){
+  return new DOMParser().parseFromString(html, "text/html");
+}
+
+/* ---------- theme ---------- */
+var theme = localStorage.getItem("skanri_theme") || "light";
+document.documentElement.setAttribute("data-theme", theme);
+$("#themeBtn").addEventListener("click", function(){
+  theme = (theme==="dark") ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("skanri_theme", theme);
+});
+
+/* ---------- tabs ---------- */
+var loaded = { home:false, comments:false, projects:false, studios:false };
+function switchTab(name){
+  $$(".tab").forEach(function(t){ t.classList.toggle("on", t.getAttribute("data-tab")===name); });
+  $$("section.page").forEach(function(p){ p.classList.toggle("on", p.id==="page-"+name); });
+  window.scrollTo(0,0);
+  if(name==="home" && !loaded.home) loadHome();
+  if(name==="comments" && !loaded.comments) loadComments();
+  if(name==="projects" && !loaded.projects) loadProjects();
+  if(name==="studios" && !loaded.studios) loadStudios();
+}
+$$(".tab").forEach(function(t){
+  t.addEventListener("click", function(){ switchTab(t.getAttribute("data-tab")); });
+});
+$("#refreshBtn").addEventListener("click", function(){
+  var on = $(".tab.on").getAttribute("data-tab");
+  if(on==="home"){ loaded.home=false; loadHome(); }
+  else if(on==="comments"){ loaded.comments=false; loadComments(); }
+  else if(on==="projects"){ loaded.projects=false; loadProjects(); }
+  else if(on==="studios"){ loaded.studios=false; loadStudios(); }
+});
+
+/* ---------- shared: projects list ---------- */
+var projectsCache = null;
+function getProjects(){
+  if(projectsCache) return projectsCache;
+  projectsCache = fetchText(BASE+"/users/"+USER+"/projects/").then(function(html){
+    var doc = parseHTML(html);
+    var list = [];
+    $$("li.project.thumb.item", doc).forEach(function(li){
+      var a = li.querySelector('.title a[href^="/projects/"]') || li.querySelector('a[href^="/projects/"]');
+      if(!a) return;
+      var m = a.getAttribute("href").match(/\/projects\/(\d+)\//);
+      if(!m) return;
+      var img = li.querySelector("img");
+      list.push({ id:m[1], title:(a.textContent||"").trim(),
+        thumb:"https://uploads.scratch.mit.edu/projects/thumbnails/"+m[1]+".png" });
+    });
+    return list;
+  });
+  return projectsCache;
+}
+
+/* ---------- home ---------- */
+function loadHome(){
+  loaded.home = true;
+  var body = $("#homeBody");
+  body.innerHTML = '<div class="loading"><span class="ms spin">progress_activity</span> 読み込み中…</div>';
+  var allP = fetch(BASE+"/site-api/users/all/"+USER+"/", {credentials:"omit"}).then(function(r){ return r.json(); });
+  var profP = fetchText(BASE+"/users/"+USER+"/");
+  Promise.all([allP, profP]).then(function(res){
+    var all = res[0];
+    var doc = parseHTML(res[1]);
+    var bioEl = doc.querySelector("#bio-readonly .overview");
+    var stEl = doc.querySelector("#status-readonly .overview");
+    function plainText(el){
+      if(!el) return "";
+      var c = el.cloneNode(true);
+      $$("br", c).forEach(function(b){ b.replaceWith("\n"); });
+      return c.textContent.replace(/[ \t]+\n/g,"\n").trim();
+    }
+    var avatar = abs(all.thumbnail_url);
+    $("#hdAvatar").src = avatar;
+    var feat = all.featured_project_data;
+    var html = '';
+    html += '<div class="card rise"><div class="pf-top"><img src="'+esc(avatar)+'" alt=""><div>'
+      + '<div class="pf-name">'+esc(USER)+'</div>'
+      + (stEl ? '<div class="pf-status">'+esc(plainText(stEl))+'</div>' : '')
+      + '</div></div>'
+      + (bioEl ? '<div class="bio">'+esc(plainText(bioEl))+'</div>' : '')
+      + '</div>';
+    html += '<a class="big-btn" id="homeCmtBtn" href="javascript:void(0)"><span class="ms">chat</span>新着コメント<span class="cnt" id="homeCmtCnt"></span></a>';
+    if(feat){
+      html += '<div class="card rise"><span class="label">'+esc(all.featured_project_label_name||"注目の作品")+'</span>'
+        + '<a class="feat" href="'+BASE+'/projects/'+feat.id+'/" target="_blank" rel="noopener">'
+        + '<img src="'+esc(abs(feat.thumbnail_url))+'" alt=""><div class="ft">'+esc(feat.title)+'</div></a></div>';
+    }
+    html += '<div class="card rise"><div class="sec-title"><span class="ms">bolt</span>クイックアクション</div>'
+      + '<a class="reply-btn" href="'+BASE+'/messages/" target="_blank" rel="noopener"><span class="ms">mail</span>メッセージを開く</a> '
+      + '<a class="reply-btn" href="'+BASE+'/mystuff/" target="_blank" rel="noopener"><span class="ms">folder_managed</span>私の作品</a></div>';
+    body.innerHTML = html;
+    $("#homeCmtBtn").addEventListener("click", function(){ switchTab("comments"); });
+    updateBadges();
+  }).catch(function(){
+    body.innerHTML = '<div class="err">プロフィールを読み込めませんでした。通信状態を確認して、右上の更新ボタンでもう一度試してください。</div>';
+    loaded.home = false;
+  });
+}
+
+/* ---------- projects tab ---------- */
+function loadProjects(){
+  loaded.projects = true;
+  var body = $("#pjBody");
+  body.innerHTML = '<div class="loading"><span class="ms spin">progress_activity</span> 読み込み中…</div>';
+  getProjects().then(function(list){
+    if(!list.length){ body.innerHTML = '<div class="empty">作品が見つかりませんでした。</div>'; return; }
+    var html = '<div class="sec-title"><span class="ms">apps</span>最近の作品（'+list.length+'件）</div><div class="grid">';
+    list.forEach(function(p, i){
+      html += '<a class="pj rise" style="animation-delay:'+Math.min(i*40,400)+'ms" href="'+BASE+'/projects/'+p.id+'/" target="_blank" rel="noopener">'
+        + '<img loading="lazy" src="'+esc(p.thumb)+'" alt=""><div class="pt">'+esc(p.title)+'</div></a>';
+    });
+    html += '</div>';
+    body.innerHTML = html;
+  }).catch(function(){
+    body.innerHTML = '<div class="err">作品を読み込めませんでした。</div>';
+    loaded.projects = false;
+  });
+}
+
+/* ---------- studios tab ---------- */
+function loadStudios(){
+  loaded.studios = true;
+  var body = $("#stBody");
+  body.innerHTML = '<div class="loading"><span class="ms spin">progress_activity</span> 読み込み中…</div>';
+  fetchText(BASE+"/users/"+USER+"/studios/").then(function(html){
+    var doc = parseHTML(html);
+    var list = [];
+    $$("li.gallery.thumb.item", doc).forEach(function(li){
+      var a = li.querySelector('.title a[href^="/studios/"]') || li.querySelector('a[href^="/studios/"]');
+      if(!a) return;
+      var m = a.getAttribute("href").match(/\/studios\/(\d+)\//);
+      if(!m) return;
+      list.push({ id:m[1], title:(a.textContent||"").replace(/\s+/g," ").trim(),
+        thumb:"https://cdn2.scratch.mit.edu/get_image/gallery/"+m[1]+"_170x100.png" });
+    });
+    if(!list.length){ body.innerHTML = '<div class="empty">スタジオが見つかりませんでした。</div>'; return; }
+    var out = '<div class="sec-title"><span class="ms">group</span>スタジオ（'+list.length+'件）</div>';
+    list.forEach(function(s, i){
+      out += '<a class="studio-row rise" style="animation-delay:'+Math.min(i*40,400)+'ms" href="'+BASE+'/studios/'+s.id+'/" target="_blank" rel="noopener">'
+        + '<img loading="lazy" src="'+esc(s.thumb)+'" alt=""><div class="st">'+esc(s.title)+'</div></a>';
+    });
+    body.innerHTML = out;
+  }).catch(function(){
+    body.innerHTML = '<div class="err">スタジオを読み込めませんでした。</div>';
+    loaded.studios = false;
+  });
+}
+
+/* ---------- comments ---------- */
+var SEEN_KEY = "skanri_seen_v1";
+var seenMap = null;
+function loadSeen(){
+  try{ seenMap = JSON.parse(localStorage.getItem(SEEN_KEY) || "null"); }
+  catch(e){ seenMap = null; }
+  return seenMap;
+}
+function saveSeen(){
+  try{
+    var keys = Object.keys(seenMap||{});
+    if(keys.length > 2500){
+      var keep = {};
+      keys.slice(keys.length-1500).forEach(function(k){ keep[k]=1; });
+      seenMap = keep; keys = Object.keys(keep);
+    }
+    localStorage.setItem(SEEN_KEY, JSON.stringify(seenMap));
+  }catch(e){}
+}
+var allComments = [];
+var commentsReady = false;
+
+function parseComments(html, ctx){
+  var doc = parseHTML(html);
+  var out = [];
+  $$("div.comment", doc).forEach(function(el){
+    var cid = el.getAttribute("data-comment-id");
+    if(!cid) return;
+    var aEl = el.querySelector("a[data-comment-user]");
+    var author = aEl ? aEl.getAttribute("data-comment-user") : "";
+    var img = el.querySelector("img.avatar");
+    var contentEl = el.querySelector(".content");
+    var text = "";
+    if(contentEl){
+      var c = contentEl.cloneNode(true);
+      $$("br", c).forEach(function(b){ b.replaceWith("\n"); });
+      text = c.textContent.split("\n").map(function(x){ return x.trim(); }).join("\n").replace(/\n{3,}/g,"\n\n").trim();
+    }
+    var timeEl = el.querySelector(".time");
+    var t = timeEl ? timeEl.getAttribute("title") : null;
+    var date = t ? new Date(t) : new Date(0);
+    var isReply = !!el.closest("ul.replies");
+    out.push({
+      key: ctx.keyPrefix + ":" + cid, cid: cid, author: author,
+      avatar: img ? abs(img.getAttribute("src")) : "",
+      text: text, date: date, isReply: isReply,
+      ctxLabel: ctx.label, url: ctx.urlBase + "#comments-" + cid
+    });
+  });
+  return out;
+}
+function pool(tasks, size){
+  var results = new Array(tasks.length);
+  var idx = 0;
+  function next(){
+    if(idx >= tasks.length) return Promise.resolve();
+    var cur = idx++;
+    return tasks[cur]().then(function(v){ results[cur]={ok:true, v:v}; },
+      function(e){ results[cur]={ok:false, v:null}; }).then(next);
+  }
+  var workers = [];
+  for(var i=0;i<Math.min(size, tasks.length);i++) workers.push(next());
+  return Promise.all(workers).then(function(){ return results; });
+}
+function loadComments(){
+  loaded.comments = true;
+  var body = $("#cmtBody");
+  body.innerHTML = '<div class="loading"><span class="ms spin">progress_activity</span> コメントを集めています…</div>';
+  getProjects().catch(function(){ return []; }).then(function(projects){
+    var targets = projects.slice(0, 12);
+    var tasks = [];
+    tasks.push(function(){
+      return Promise.all([1,2].map(function(p){
+        return fetchText(BASE+"/site-api/comments/user/"+USER+"/?page="+p).catch(function(){ return ""; });
+      })).then(function(pages){
+        var arr = [];
+        pages.forEach(function(h){ if(h) arr = arr.concat(parseComments(h, {keyPrefix:"u", label:"プロフィール", urlBase:BASE+"/users/"+USER+"/"})); });
+        return arr;
+      });
+    });
+    targets.forEach(function(p){
+      tasks.push(function(){
+        return fetchText(BASE+"/site-api/comments/project/"+p.id+"/?page=1").then(function(h){
+          return parseComments(h, {keyPrefix:"p"+p.id, label:p.title, urlBase:BASE+"/projects/"+p.id+"/"});
+        });
+      });
+    });
+    return pool(tasks, 4).then(function(results){
+      var arr = [], anyOk = false, anyFail = false;
+      results.forEach(function(r){
+        if(r.ok){ anyOk = true; arr = arr.concat(r.v); } else { anyFail = true; }
+      });
+      var seenKeys = {};
+      arr.forEach(function(c){ if(!seenKeys[c.key]){ seenKeys[c.key]=1; } });
+      var dedup = arr.filter(function(c){ if(seenKeys[c.key]===2) return false; seenKeys[c.key]=2; return true; });
+      dedup.sort(function(a,b){ return b.date - a.date; });
+      allComments = dedup.slice(0, 120);
+      commentsReady = true;
+      var seen = loadSeen();
+      if(seen === null){
+        seenMap = {};
+        allComments.forEach(function(c){ seenMap[c.key]=1; });
+        saveSeen();
+      }
+      renderComments(anyFail && anyOk);
+      updateBadges();
+      if(!anyOk){
+        body.innerHTML = '<div class="err">コメントを読み込めませんでした。通信状態を確認して、再読み込みしてください。</div>';
+        loaded.comments = false;
+      }
+    });
+  });
+}
+function renderComments(partial){
+  var body = $("#cmtBody");
+  var seen = loadSeen() || {};
+  var html = "";
+  if(partial) html += '<div class="err">一部のコメントを取得できませんでした。表示されている分だけ先に確認できます。</div>';
+  if(!allComments.length){
+    html += '<div class="empty">コメントはまだありません。</div>';
+    body.innerHTML = html; return;
+  }
+  html += '<div class="note" style="margin:2px 2px 10px">プロフィールと最近の作品 最大12件の新着コメントです。カードを押すと既読になります。</div>';
+  allComments.forEach(function(c, i){
+    var unread = !seen[c.key];
+    html += '<div class="cmt rise'+(c.isReply?" reply":"")+(unread?" unread":"")+'" data-key="'+esc(c.key)+'" style="animation-delay:'+Math.min(i*30,300)+'ms">'
+      + '<img class="av" loading="lazy" src="'+esc(c.avatar)+'" alt="">'
+      + '<div class="cmt-body"><div class="cmt-head">'
+      + '<span class="cmt-author"><a href="'+BASE+'/users/'+esc(c.author)+'" target="_blank" rel="noopener">'+esc(c.author)+'</a></span>'
+      + (c.author===USER ? '<span class="self-tag">自分</span>' : '')
+      + (unread ? '<span class="new-tag">NEW</span>' : '')
+      + '<span class="cmt-time">'+esc(relTime(c.date))+'</span></div>'
+      + '<a class="cmt-ctx" href="'+esc(c.url)+'" target="_blank" rel="noopener">'+esc(c.ctxLabel)+'</a>'
+      + '<div class="cmt-text">'+esc(c.text)+'</div>'
+      + '<a class="reply-btn" href="'+esc(c.url)+'" target="_blank" rel="noopener"><span class="ms">reply</span>返信する</a>'
+      + '</div></div>';
+  });
+  body.innerHTML = html;
+}
+function updateBadges(){
+  var b = $("#cmtBadge"), h = $("#homeCmtCnt");
+  if(!commentsReady){ return; }
+  var seen = loadSeen() || {};
+  var n = allComments.filter(function(c){ return !seen[c.key]; }).length;
+  [b, h].forEach(function(el){
+    if(!el) return;
+    if(n > 0){ el.textContent = n > 99 ? "99+" : String(n); el.classList.add("show"); }
+    else { el.classList.remove("show"); }
+  });
+}
+$("#cmtBody").addEventListener("click", function(e){
+  var card = e.target.closest(".cmt");
+  if(!card) return;
+  var key = card.getAttribute("data-key");
+  var seen = loadSeen();
+  if(seen && !seen[key]){
+    seen[key] = 1; saveSeen();
+    card.classList.remove("unread");
+    var tag = card.querySelector(".new-tag"); if(tag) tag.remove();
+    updateBadges();
+  }
+});
+$("#cmtReload").addEventListener("click", function(){ loaded.comments=false; commentsReady=false; loadComments(); });
+$("#cmtReadAll").addEventListener("click", function(){
+  var seen = loadSeen() || {};
+  allComments.forEach(function(c){ seen[c.key]=1; });
+  seenMap = seen; saveSeen();
+  renderComments(false); updateBadges();
+});
+$("#resetSeenBtn").addEventListener("click", function(){
+  localStorage.removeItem(SEEN_KEY);
+  seenMap = null; commentsReady = false;
+  var b = $("#cmtBadge"); if(b) b.classList.remove("show");
+  var h = $("#homeCmtCnt"); if(h) h.classList.remove("show");
+  this.innerHTML = '<span class="ms">check</span>リセットしました';
+});
+
+/* ---------- init ---------- */
+loadHome();
+setTimeout(function(){ if(!loaded.comments) loadComments(); }, 900);
+</script>
+</body>
+</html>
