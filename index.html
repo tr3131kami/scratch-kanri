@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Scratch管理 | suzunokana専用</title>
-<meta name="description" content="suzunokana専用のScratch管理アプリ。新着コメント・作品・スタジオをまとめて確認できます。">
+<meta name="description" content="Scratch管理アプリ。SLSでログインしたユーザーの新着コメント・作品・スタジオをまとめて確認できます。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
@@ -92,20 +92,35 @@ nav.tabs{position:fixed; left:0; right:0; bottom:0; z-index:60; background:color
 .tab .bdg.show{display:flex;}
 .err{background:#fff0f4; color:#c22e5c; border:1px solid #ffc9da; border-radius:12px; padding:10px 12px; font-size:12.5px; font-weight:700; margin-bottom:10px; line-height:1.6;}
 html[data-theme="dark"] .err{background:#3a2230; color:#ff9ec0; border-color:#5c3049;}
+#gate{display:none;}
+body.locked #gate{display:block;}
+body.locked section.page, body.locked nav.tabs{display:none!important;}
+.gate-card{text-align:center; padding:30px 20px;}
+.gate-card .ms.big{font-size:56px; color:var(--blue);}
+.gate-title{font-size:20px; font-weight:900; margin:10px 0 8px;}
 </style>
 </head>
-<body>
+<body class="locked">
 <header>
   <div class="hd-in">
-    <img id="hdAvatar" src="https://uploads.scratch.mit.edu/users/avatars/145926730.png" alt="">
+    <img id="hdAvatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23dde6f5'/%3E%3Ccircle cx='50' cy='38' r='17' fill='%238a93a8'/%3E%3Cellipse cx='50' cy='88' rx='28' ry='20' fill='%238a93a8'/%3E%3C/svg%3E" alt="">
     <div>
       <div class="hd-title">Scratch管理</div>
-      <div class="hd-sub">suzunokana 専用</div>
+      <div class="hd-sub" id="hdSub">ログインしてください</div>
     </div>
     <button class="hd-btn" id="refreshBtn" aria-label="更新"><span class="ms">refresh</span></button>
   </div>
 </header>
 <main>
+  <div id="gate">
+    <div class="card gate-card rise">
+      <span class="ms big">account_circle</span>
+      <div class="gate-title">Scratchでログイン</div>
+      <div class="note" style="text-align:left">ログインすると、あなたのScratchアカウントの新着コメント・作品・スタジオをまとめて管理できます。表示される内容は、ログインしたユーザーに合わせて変わります。</div>
+      <button class="reply-btn" id="gateLogin" style="font-size:15px; padding:13px 26px; margin-top:14px"><span class="ms">login</span>Scratchでログイン</button>
+      <div class="note" style="margin-top:12px">認証にはScratchLoginSystem（suzunokana × とろろぉーーーー）を使います。</div>
+    </div>
+  </div>
   <section class="page on" id="page-home">
     <div id="homeBody"><div class="loading"><span class="ms spin">progress_activity</span> 読み込み中…</div></div>
   </section>
@@ -128,9 +143,14 @@ html[data-theme="dark"] .err{background:#3a2230; color:#ff9ec0; border-color:#5c
     <div id="stBody"><div class="loading"><span class="ms spin">progress_activity</span> 読み込み中…</div></div>
   </section>
   <section class="page" id="page-more">
+    <div class="card rise">
+      <div class="sec-title"><span class="ms">account_circle</span>アカウント</div>
+      <div class="note">ログイン中：<b id="acctName"></b></div>
+      <button class="reply-btn" id="logoutBtn" style="margin-top:10px; background:linear-gradient(135deg,#ff8fab,#ff5d8f)"><span class="ms">logout</span>ログアウト</button>
+    </div>
     <a class="big-btn" href="https://scratch.mit.edu/messages/" target="_blank" rel="noopener"><span class="ms">mail</span>メッセージを開く（招待の承認もここ）</a>
     <a class="big-btn" href="https://scratch.mit.edu/mystuff/" target="_blank" rel="noopener"><span class="ms">folder_managed</span>私の作品・スタジオ管理</a>
-    <a class="big-btn" href="https://scratch.mit.edu/users/suzunokana/" target="_blank" rel="noopener"><span class="ms">person</span>プロフィールを開く</a>
+    <a class="big-btn" id="pfLink" href="https://scratch.mit.edu/users/suzunokana/" target="_blank" rel="noopener"><span class="ms">person</span>プロフィールを開く</a>
     <button class="big-btn" id="themeBtn"><span class="ms">dark_mode</span>ダークモード切替</button>
     <button class="big-btn" id="resetSeenBtn"><span class="ms">restart_alt</span>既読の記録をリセット</button>
     <div class="card">
@@ -148,9 +168,10 @@ html[data-theme="dark"] .err{background:#3a2230; color:#ff9ec0; border-color:#5c
     <button class="tab" data-tab="more"><span class="ms">more_horiz</span>その他</button>
   </div>
 </nav>
+<script src="https://tr3131kami.github.io/ScratchLoginSystem/scratch-login.js"></script>
 <script>
 "use strict";
-var USER = "suzunokana";
+var USER = null;
 var BASE = "https://scratch.mit.edu";
 var $ = function(s, r){ return (r||document).querySelector(s); };
 var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
@@ -198,6 +219,7 @@ $$(".tab").forEach(function(t){
   t.addEventListener("click", function(){ switchTab(t.getAttribute("data-tab")); });
 });
 $("#refreshBtn").addEventListener("click", function(){
+  if(!USER) return;
   var on = $(".tab.on").getAttribute("data-tab");
   if(on==="home"){ loaded.home=false; loadHome(); }
   else if(on==="comments"){ loaded.comments=false; loadComments(); }
@@ -322,10 +344,10 @@ function loadStudios(){
 }
 
 /* ---------- comments ---------- */
-var SEEN_KEY = "skanri_seen_v1";
+function seenKey(){ return "skanri_seen_v1_" + (USER || ""); }
 var seenMap = null;
 function loadSeen(){
-  try{ seenMap = JSON.parse(localStorage.getItem(SEEN_KEY) || "null"); }
+  try{ seenMap = JSON.parse(localStorage.getItem(seenKey()) || "null"); }
   catch(e){ seenMap = null; }
   return seenMap;
 }
@@ -337,7 +359,7 @@ function saveSeen(){
       keys.slice(keys.length-1500).forEach(function(k){ keep[k]=1; });
       seenMap = keep; keys = Object.keys(keep);
     }
-    localStorage.setItem(SEEN_KEY, JSON.stringify(seenMap));
+    localStorage.setItem(seenKey(), JSON.stringify(seenMap));
   }catch(e){}
 }
 var allComments = [];
@@ -491,16 +513,40 @@ $("#cmtReadAll").addEventListener("click", function(){
   renderComments(false); updateBadges();
 });
 $("#resetSeenBtn").addEventListener("click", function(){
-  localStorage.removeItem(SEEN_KEY);
+  localStorage.removeItem(seenKey());
   seenMap = null; commentsReady = false;
   var b = $("#cmtBadge"); if(b) b.classList.remove("show");
   var h = $("#homeCmtCnt"); if(h) h.classList.remove("show");
   this.innerHTML = '<span class="ms">check</span>リセットしました';
 });
 
-/* ---------- init ---------- */
-loadHome();
-setTimeout(function(){ if(!loaded.comments) loadComments(); }, 900);
+/* ---------- auth (SLS) ---------- */
+function startApp(user){
+  USER = user;
+  $("#hdSub").textContent = user + " 専用";
+  $("#acctName").textContent = user;
+  $("#pfLink").href = BASE + "/users/" + user + "/";
+  document.body.classList.remove("locked");
+  loaded = { home:false, comments:false, projects:false, studios:false };
+  projectsCache = null; allComments = []; commentsReady = false; seenMap = null;
+  loadHome();
+  setTimeout(function(){ if(!loaded.comments) loadComments(); }, 900);
+}
+function showGate(){ document.body.classList.add("locked"); }
+$("#gateLogin").addEventListener("click", function(){
+  if(window.ScratchLogin){ ScratchLogin.login(); } else { location.reload(); }
+});
+$("#logoutBtn").addEventListener("click", function(){ if(window.ScratchLogin) ScratchLogin.logout(); });
+if(window.ScratchLogin){
+  ScratchLogin.init({
+    onLogin: function(u){ startApp(u || ScratchLogin.getUser()); },
+    onLogout: function(){ location.reload(); }
+  });
+  var savedUser = ScratchLogin.getUser();
+  if(savedUser){ startApp(savedUser); } else { showGate(); }
+} else {
+  showGate();
+}
 </script>
 </body>
 </html>
