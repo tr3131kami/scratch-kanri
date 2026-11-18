@@ -66,7 +66,12 @@ section.page.on{display:block;}
 .cmt-time{font-size:11.5px; color:var(--muted); font-weight:700;}
 .cmt-ctx{font-size:11.5px; color:var(--blue); font-weight:900; text-decoration:none; display:inline-block; margin-top:1px;}
 .cmt-text{font-size:14px; line-height:1.65; margin-top:3px; word-break:break-word; white-space:pre-wrap;}
-.cmt.reply{margin-left:34px; background:var(--surface2); box-shadow:none;}
+.cmt.reply{background:var(--surface2); box-shadow:none;}
+.thread{margin-bottom:12px;}
+.thread > .cmt{margin-bottom:8px;}
+.thread-replies{margin-left:22px; border-left:2.5px solid var(--border); padding-left:13px;}
+.thread-replies .cmt{margin-bottom:8px;}
+.thread-replies .cmt:last-child{margin-bottom:2px;}
 .reply-btn{margin-top:8px; display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--blue),#7ab5ff); color:#fff; border:none; font-family:inherit; font-weight:900; font-size:13px; padding:9px 16px; border-radius:999px; cursor:pointer; text-decoration:none;}
 .reply-btn .ms{font-size:18px; vertical-align:-4px;}
 .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
@@ -363,6 +368,7 @@ function saveSeen(){
   }catch(e){}
 }
 var allComments = [];
+var threadList = [];
 var commentsReady = false;
 
 function parseComments(html, ctx){
@@ -385,8 +391,14 @@ function parseComments(html, ctx){
     var t = timeEl ? timeEl.getAttribute("title") : null;
     var date = t ? new Date(t) : new Date(0);
     var isReply = !!el.closest("ul.replies");
+    var threadId = cid;
+    if(isReply){
+      var ul = el.closest("ul.replies");
+      if(ul && ul.getAttribute("data-thread")) threadId = ul.getAttribute("data-thread");
+    }
     out.push({
       key: ctx.keyPrefix + ":" + cid, cid: cid, author: author,
+      src: ctx.keyPrefix, thread: threadId,
       avatar: img ? abs(img.getAttribute("src")) : "",
       text: text, date: date, isReply: isReply,
       ctxLabel: ctx.label, url: ctx.urlBase + "#comments-" + cid
@@ -438,8 +450,25 @@ function loadComments(){
       var seenKeys = {};
       arr.forEach(function(c){ if(!seenKeys[c.key]){ seenKeys[c.key]=1; } });
       var dedup = arr.filter(function(c){ if(seenKeys[c.key]===2) return false; seenKeys[c.key]=2; return true; });
-      dedup.sort(function(a,b){ return b.date - a.date; });
-      allComments = dedup.slice(0, 120);
+      var groups = {}, order = [];
+      dedup.forEach(function(c){
+        var gk = c.src + ":" + c.thread;
+        if(!groups[gk]){ groups[gk] = { parent:null, replies:[], latest:0 }; order.push(groups[gk]); }
+        var g = groups[gk];
+        if(!c.isReply && c.cid === c.thread){ g.parent = c; } else { g.replies.push(c); }
+        if(c.date.getTime() > g.latest) g.latest = c.date.getTime();
+      });
+      var threads = order.slice().sort(function(a,b){ return b.latest - a.latest; });
+      threads.forEach(function(g){ g.replies.sort(function(a,b){ return a.date - b.date; }); });
+      threadList = [];
+      allComments = [];
+      for(var ti=0; ti<threads.length; ti++){
+        var g2 = threads[ti];
+        threadList.push(g2);
+        if(g2.parent) allComments.push(g2.parent);
+        allComments = allComments.concat(g2.replies);
+        if(allComments.length >= 120) break;
+      }
       commentsReady = true;
       var seen = loadSeen();
       if(seen === null){
@@ -456,6 +485,20 @@ function loadComments(){
     });
   });
 }
+function cardHTML(c, i, seen){
+  var unread = !seen[c.key];
+  return '<div class="cmt rise'+(c.isReply?" reply":"")+(unread?" unread":"")+'" data-key="'+esc(c.key)+'" style="animation-delay:'+Math.min(i*30,300)+'ms">'
+    + '<img class="av" loading="lazy" src="'+esc(c.avatar)+'" alt="">'
+    + '<div class="cmt-body"><div class="cmt-head">'
+    + '<span class="cmt-author"><a href="'+BASE+'/users/'+esc(c.author)+'" target="_blank" rel="noopener">'+esc(c.author)+'</a></span>'
+    + (c.author===USER ? '<span class="self-tag">自分</span>' : '')
+    + (unread ? '<span class="new-tag">NEW</span>' : '')
+    + '<span class="cmt-time">'+esc(relTime(c.date))+'</span></div>'
+    + '<a class="cmt-ctx" href="'+esc(c.url)+'" target="_blank" rel="noopener">'+esc(c.ctxLabel)+'</a>'
+    + '<div class="cmt-text">'+esc(c.text)+'</div>'
+    + '<a class="reply-btn" href="'+esc(c.url)+'" target="_blank" rel="noopener"><span class="ms">reply</span>返信する</a>'
+    + '</div></div>';
+}
 function renderComments(partial){
   var body = $("#cmtBody");
   var seen = loadSeen() || {};
@@ -465,20 +508,17 @@ function renderComments(partial){
     html += '<div class="empty">コメントはまだありません。</div>';
     body.innerHTML = html; return;
   }
-  html += '<div class="note" style="margin:2px 2px 10px">プロフィールと最近の作品 最大12件の新着コメントです。カードを押すと既読になります。</div>';
-  allComments.forEach(function(c, i){
-    var unread = !seen[c.key];
-    html += '<div class="cmt rise'+(c.isReply?" reply":"")+(unread?" unread":"")+'" data-key="'+esc(c.key)+'" style="animation-delay:'+Math.min(i*30,300)+'ms">'
-      + '<img class="av" loading="lazy" src="'+esc(c.avatar)+'" alt="">'
-      + '<div class="cmt-body"><div class="cmt-head">'
-      + '<span class="cmt-author"><a href="'+BASE+'/users/'+esc(c.author)+'" target="_blank" rel="noopener">'+esc(c.author)+'</a></span>'
-      + (c.author===USER ? '<span class="self-tag">自分</span>' : '')
-      + (unread ? '<span class="new-tag">NEW</span>' : '')
-      + '<span class="cmt-time">'+esc(relTime(c.date))+'</span></div>'
-      + '<a class="cmt-ctx" href="'+esc(c.url)+'" target="_blank" rel="noopener">'+esc(c.ctxLabel)+'</a>'
-      + '<div class="cmt-text">'+esc(c.text)+'</div>'
-      + '<a class="reply-btn" href="'+esc(c.url)+'" target="_blank" rel="noopener"><span class="ms">reply</span>返信する</a>'
-      + '</div></div>';
+  html += '<div class="note" style="margin:2px 2px 10px">プロフィールと最近の作品 最大12件の新着コメントです。返信は線でつないで下に表示します。カードを押すと既読になります。</div>';
+  var idx = 0;
+  threadList.forEach(function(g){
+    html += '<div class="thread">';
+    if(g.parent) html += cardHTML(g.parent, idx++, seen);
+    if(g.replies.length){
+      html += '<div class="thread-replies">';
+      g.replies.forEach(function(c){ html += cardHTML(c, idx++, seen); });
+      html += '</div>';
+    }
+    html += '</div>';
   });
   body.innerHTML = html;
 }
@@ -528,7 +568,7 @@ function startApp(user){
   $("#pfLink").href = BASE + "/users/" + user + "/";
   document.body.classList.remove("locked");
   loaded = { home:false, comments:false, projects:false, studios:false };
-  projectsCache = null; allComments = []; commentsReady = false; seenMap = null;
+  projectsCache = null; allComments = []; threadList = []; commentsReady = false; seenMap = null;
   loadHome();
   setTimeout(function(){ if(!loaded.comments) loadComments(); }, 900);
 }
