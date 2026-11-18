@@ -95,6 +95,8 @@ nav.tabs{position:fixed; left:0; right:0; bottom:0; z-index:60; background:color
 .tab.on{color:var(--blue);}
 .tab .bdg{position:absolute; top:4px; right:calc(50% - 22px); background:var(--new); color:#fff; font-size:10px; font-weight:900; min-width:19px; height:19px; border-radius:999px; display:none; align-items:center; justify-content:center; padding:0 5px;}
 .tab .bdg.show{display:flex;}
+.search-box{width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:inherit; font-size:14.5px; font-weight:700; margin-bottom:12px; outline:none;}
+.search-box:focus{border-color:var(--blue);}
 .err{background:#fff0f4; color:#c22e5c; border:1px solid #ffc9da; border-radius:12px; padding:10px 12px; font-size:12.5px; font-weight:700; margin-bottom:10px; line-height:1.6;}
 html[data-theme="dark"] .err{background:#3a2230; color:#ff9ec0; border-color:#5c3049;}
 #gate{display:none;}
@@ -233,24 +235,46 @@ $("#refreshBtn").addEventListener("click", function(){
 });
 
 /* ---------- shared: projects list ---------- */
+function parseProjectsPage(html){
+  var doc = parseHTML(html);
+  var list = [];
+  $$("li.project.thumb.item", doc).forEach(function(li){
+    var a = li.querySelector('.title a[href^="/projects/"]') || li.querySelector('a[href^="/projects/"]');
+    if(!a) return;
+    var m = a.getAttribute("href").match(/\/projects\/(\d+)\//);
+    if(!m) return;
+    list.push({ id:m[1], title:(a.textContent||"").trim(),
+      thumb:"https://uploads.scratch.mit.edu/projects/thumbnails/"+m[1]+".png" });
+  });
+  return list;
+}
+function fetchProjectsPage(n){
+  var url = BASE+"/users/"+USER+"/projects/" + (n > 1 ? "?page="+n : "");
+  return fetchText(url).then(parseProjectsPage);
+}
 var projectsCache = null;
 function getProjects(){
   if(projectsCache) return projectsCache;
-  projectsCache = fetchText(BASE+"/users/"+USER+"/projects/").then(function(html){
-    var doc = parseHTML(html);
-    var list = [];
-    $$("li.project.thumb.item", doc).forEach(function(li){
-      var a = li.querySelector('.title a[href^="/projects/"]') || li.querySelector('a[href^="/projects/"]');
-      if(!a) return;
-      var m = a.getAttribute("href").match(/\/projects\/(\d+)\//);
-      if(!m) return;
-      var img = li.querySelector("img");
-      list.push({ id:m[1], title:(a.textContent||"").trim(),
-        thumb:"https://uploads.scratch.mit.edu/projects/thumbnails/"+m[1]+".png" });
+  projectsCache = fetchProjectsPage(1);
+  return projectsCache;
+}
+var allProjectsCache = null;
+function getAllProjects(onProgress){
+  if(allProjectsCache) return allProjectsCache;
+  var all = [], seenIds = {};
+  function step(page){
+    return fetchProjectsPage(page).then(function(list){
+      list.forEach(function(pr){ if(!seenIds[pr.id]){ seenIds[pr.id]=1; all.push(pr); } });
+      if(onProgress) onProgress(all.length);
+      if(list.length < 60 || page >= 30) return all;
+      return step(page+1);
     });
+  }
+  allProjectsCache = step(1).then(function(list){
+    projectsCache = Promise.resolve(list.slice(0, 60));
     return list;
   });
-  return projectsCache;
+  return allProjectsCache;
 }
 
 /* ---------- home ---------- */
@@ -303,16 +327,28 @@ function loadHome(){
 function loadProjects(){
   loaded.projects = true;
   var body = $("#pjBody");
-  body.innerHTML = '<div class="loading"><span class="ms spin">progress_activity</span> 読み込み中…</div>';
-  getProjects().then(function(list){
+  body.innerHTML = '<div class="loading"><span class="ms spin">progress_activity</span> 全作品を読み込み中…（<span id="pjCount">0</span>件まで取得）</div>';
+  getAllProjects(function(n){ var el = $("#pjCount"); if(el) el.textContent = n; }).then(function(list){
     if(!list.length){ body.innerHTML = '<div class="empty">作品が見つかりませんでした。</div>'; return; }
-    var html = '<div class="sec-title"><span class="ms">apps</span>最近の作品（'+list.length+'件）</div><div class="grid">';
+    var html = '<div class="sec-title"><span class="ms">apps</span>すべての作品（<span id="pjTotal">'+list.length+'</span>件）</div>'
+      + '<input id="pjSearch" class="search-box" type="search" placeholder="タイトルで探す">'
+      + '<div class="grid" id="pjGrid">';
     list.forEach(function(p, i){
-      html += '<a class="pj rise" style="animation-delay:'+Math.min(i*40,400)+'ms" href="'+BASE+'/projects/'+p.id+'/" target="_blank" rel="noopener">'
+      html += '<a class="pj rise" style="animation-delay:'+Math.min(i*15,300)+'ms" data-title="'+esc(p.title.toLowerCase())+'" href="'+BASE+'/projects/'+p.id+'/" target="_blank" rel="noopener">'
         + '<img loading="lazy" src="'+esc(p.thumb)+'" alt=""><div class="pt">'+esc(p.title)+'</div></a>';
     });
-    html += '</div>';
+    html += '</div><div class="empty" id="pjNoHit" style="display:none">見つかりませんでした。</div>';
     body.innerHTML = html;
+    $("#pjSearch").addEventListener("input", function(){
+      var q = this.value.trim().toLowerCase(), shown = 0;
+      $$("#pjGrid .pj").forEach(function(card){
+        var hit = !q || (card.getAttribute("data-title")||"").indexOf(q) >= 0;
+        card.style.display = hit ? "" : "none";
+        if(hit) shown++;
+      });
+      $("#pjTotal").textContent = shown;
+      $("#pjNoHit").style.display = shown ? "none" : "";
+    });
   }).catch(function(){
     body.innerHTML = '<div class="err">作品を読み込めませんでした。</div>';
     loaded.projects = false;
@@ -568,7 +604,7 @@ function startApp(user){
   $("#pfLink").href = BASE + "/users/" + user + "/";
   document.body.classList.remove("locked");
   loaded = { home:false, comments:false, projects:false, studios:false };
-  projectsCache = null; allComments = []; threadList = []; commentsReady = false; seenMap = null;
+  projectsCache = null; allProjectsCache = null; allComments = []; threadList = []; commentsReady = false; seenMap = null;
   loadHome();
   setTimeout(function(){ if(!loaded.comments) loadComments(); }, 900);
 }
